@@ -1,4 +1,3 @@
-
 #ifndef matching2D_hpp
 #define matching2D_hpp
 
@@ -9,6 +8,8 @@
 #include <vector>
 #include <cmath>
 #include <limits>
+#include <stdexcept>
+
 
 #include <opencv2/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
