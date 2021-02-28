@@ -142,7 +142,46 @@ void show3DObjects(std::vector<BoundingBox> &boundingBoxes, cv::Size worldSize, 
 // associate a given bounding box with the keypoints it contains
 void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr, std::vector<cv::DMatch> &kptMatches)
 {
-    // ...
+    // Add all keypoints contained in the bounding box
+    for (auto kpt : kptsCurr)
+    {
+        if (boundingBox.roi.contains(kpt.pt))
+            boundingBox.keypoints.push_back(kpt);
+    }
+    // Consider as potential matches all those where current keypoint is contained in the bounding box
+    std::vector<cv::DMatch> potMatches;
+    std::vector<double> kptDistances;
+    for (auto match : kptMatches)
+    {
+        // current keypoint in match
+        cv::KeyPoint currKp = kptsCurr.at(match.trainIdx);
+        if (boundingBox.roi.contains(currKp.pt))
+        {
+            potMatches.push_back(match);
+
+            cv::KeyPoint prevKp = kptsPrev.at(match.queryIdx);
+            auto diffPt = currKp.pt - prevKp.pt;
+
+            // Compute distance between keypoints
+            double distance = sqrt(diffPt.x * diffPt.x + diffPt.y * diffPt.y);
+            kptDistances.push_back(distance);
+        }
+    }
+
+    // Compute median and inter-quartile range of distances
+    std::vector<double> sortDistances;
+    std::copy(kptDistances.begin(), kptDistances.end(), sortDistances.begin());
+    std::sort(sortDistances.begin(), sortDistances.end());
+    double medianDist = sortDistances.at((int)(sortDistances.size()/2));
+    double iqrDist = sortDistances.at((int)(3*sortDistances.size()/4)) - sortDistances.at((int)(sortDistances.size()/4));
+
+    // Add only matches that have a distance closer than 1.5 iqr to median
+    double thresh = 1.5;
+    for (int i=0; i<kptDistances.size(); i++)
+    {
+        if (fabs(kptDistances.at(i)-medianDist) < (thresh * iqrDist))
+            boundingBox.kptMatches.push_back(potMatches.at(i));
+    }
 }
 
 
@@ -150,7 +189,7 @@ void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint
 void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr, 
                       std::vector<cv::DMatch> kptMatches, double frameRate, double &TTC, cv::Mat *visImg)
 {
-    // ...
+    
 }
 
 
@@ -203,7 +242,7 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
                 {
                 return lhs.x < rhs.x;
                 });
-    LidarPoint prevMedianPt = largePrevCluster->at((int)largePrevCluster->size()/2);
+    LidarPoint prevMedianPt = largePrevCluster->at((int)(largePrevCluster->size()/2));
     std::sort(largeCurrCluster->begin(),
                 largeCurrCluster->end(),
                 [](const LidarPoint& lhs,
@@ -211,7 +250,7 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
                 {
                 return lhs.x < rhs.x;
                 });
-    LidarPoint currMedianPt = largeCurrCluster->at((int)largeCurrCluster->size()/2);
+    LidarPoint currMedianPt = largeCurrCluster->at((int)(largeCurrCluster->size()/2));
 
     // Compute TTC (speed computed with median points, distance with closest point)
 
