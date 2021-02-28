@@ -158,6 +158,98 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
 
 
 void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bbBestMatches, DataFrame &prevFrame, DataFrame &currFrame)
-{
-    // ...
+{   
+    // For all boxes on previous frame
+    for (auto prevBox : prevFrame.boundingBoxes)
+    {   
+        // Best box ID on current frame and best nr of matches
+        int bestCurrId, bestMatches{0};
+        // For all boxIDs on current image
+        for (auto currBox: currFrame.boundingBoxes)
+        {
+            int nrMatches{0};
+            // For all keypoints match
+            for (auto match : matches)
+            {
+                // Extract matching keypoints in previous and current frame
+                cv::KeyPoint prevKp = prevFrame.keypoints.at(match.queryIdx);
+                cv::KeyPoint currKp = currFrame.keypoints.at(match.trainIdx);
+
+                // If previous box contains previous keypoint and current box contains current keypoint, increase number of matches
+                if (prevBox.roi.contains(prevKp.pt) && currBox.roi.contains(currKp.pt))
+                    nrMatches++;
+            } // eof loop over all keypoint matches
+
+            // If nr matches is above best match, make best match
+            if (nrMatches > bestMatches)
+            {
+                bestMatches = nrMatches;
+                bestCurrId = currBox.boxID;
+            }
+
+        } // eof loop over all current box IDs
+
+        // Add to bbBestMatches if number of matches is at least 1
+        if (bestMatches > 0)
+        {
+            bbBestMatches.insert(std::make_pair(prevBox.boxID, bestCurrId));
+        }
+
+    } // eof loop over all previous box IDs
 }
+
+// void matchBoundingBoxesOld(std::vector<cv::DMatch> &matches, std::map<int, int> &bbBestMatches, DataFrame &prevFrame, DataFrame &currFrame)
+// {
+//     std::map<std::pair<int, int>, int> bbNrMatches; // map containing as key pairs of bounding box IDs and as value number of keypoint matches
+//     for (auto match : matches)
+//     {
+//         // Find keypoints from match in previous and current frame
+//         cv::KeyPoint prevKp = prevFrame.keypoints.at(match.queryIdx);
+//         cv::KeyPoint currKp = currFrame.keypoints.at(match.trainIdx);
+
+//         vector<int> prevIds, currIds; // IDs of boxes containing keypoints in prev and current image
+
+//         // Collect box IDs containing previous keypoint
+//         for (auto it = prevFrame.boundingBoxes.begin(); it != prevFrame.boundingBoxes.end(); it++)
+//         {
+//             if (it->roi.contains(prevKp.pt)
+//                 prevIds.push_back(it->boxID);
+//         }
+
+//         // Collect box IDs containing current keypoint
+//         for (auto it = currFrame.boundingBoxes.begin(); it != currFrame.boundingBoxes.end(); it++)
+//         {
+//             if (it->roi.contains(currKp.pt)
+//                 currIds.push_back(it->boxID);
+//         }
+
+//         // If at least a box was found on each frame, add all box pairs to bbMatches
+//         if (!(prevIds.empty()) && !(currIds.empty()) 
+//         {
+//             for (auto prevId : prevIds)
+//             {
+//                 for (auto currId : currIds)
+//                 {
+//                     std::pair<int, int> bbMatch = make_pair(prevId, currId);
+//                     // Find if bbMatch is present in map
+//                     auto map_it = bbNrMatches.find(bbMatch);
+//                     // if iterator is the end of the map, bbMatch was not found --> initialize at 1
+//                     if (map_it == bbNrMatches.end())
+//                         bbNrMatches[bbMatch] = 1;
+//                     // otherwise, increment by 1
+//                     else
+//                         bbNrMatches[bbMatch] = map_it->second + 1;
+//                 }
+//             }
+//         }
+
+//     } // eof loop over all keypoint matches
+    
+//     // For all boxIDs on previous image
+//     for (auto prevId : prevFrame.boundingBoxes.boxID)
+//     {
+//         std::pair<int, int> b = make_pair(-1, -1);
+//         // Alt 1 -> bbMatches pairs vector, count pairs where first element is boxID and pick the one with highest nr of matches
+//         // Alt 2 -> bbNrMatches map pairs -> int, pick pair with first key boxID with highest nr of matches
+//     }
+// }
