@@ -8,6 +8,10 @@
 #include "camFusion.hpp"
 #include "dataStructures.h"
 
+
+#include "lidar/euclideanCluster.h"
+#include "lidar/euclideanCluster.cpp"
+
 using namespace std;
 
 
@@ -153,7 +157,66 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
 void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
                      std::vector<LidarPoint> &lidarPointsCurr, double frameRate, double &TTC)
 {
-    // ...
+    // Cluster points in previous and current image
+    // max distance
+    double maxDist = 0.125;    
+    std::vector<std::vector<LidarPoint>> prevClusters = euclideanCluster(lidarPointsPrev, maxDist, 10, 10000);
+    std::vector<std::vector<LidarPoint>> currClusters = euclideanCluster(lidarPointsCurr, maxDist, 10, 10000);
+
+    // Pick largest clusters for prev and current frame
+    auto largePrevCluster = std::max_element(std::begin(prevClusters),
+                                     std::end(prevClusters),
+                                     [](const std::vector<LidarPoint>& lhs,
+                                        const std::vector<LidarPoint>& rhs)
+                                     {
+                                       return lhs.size() < rhs.size();
+                                     });
+    auto largeCurrCluster = std::max_element(std::begin(currClusters),
+                                     std::end(currClusters),
+                                     [](const std::vector<LidarPoint>& lhs,
+                                        const std::vector<LidarPoint>& rhs)
+                                     {
+                                       return lhs.size() < rhs.size();
+                                     });
+
+    // Pick closest points (along x) in current cluster
+    // auto prevClosePt = std::min_element(largePrevCluster->begin(),
+    //                                  largePrevCluster->end(),
+    //                                  [](const LidarPoint& lhs,
+    //                                     const LidarPoint& rhs)
+    //                                  {
+    //                                    return lhs.x < rhs.x;
+    //                                  });
+    auto currClosePt = std::min_element(largeCurrCluster->begin(),
+                                     largeCurrCluster->end(),
+                                     [](const LidarPoint& lhs,
+                                        const LidarPoint& rhs)
+                                     {
+                                       return lhs.x < rhs.x;
+                                     });
+
+    // Pick median points (along x) in previous current cluster --> more robust for speed computation
+    std::sort(largePrevCluster->begin(),
+                largePrevCluster->end(),
+                [](const LidarPoint& lhs,
+                const LidarPoint& rhs)
+                {
+                return lhs.x < rhs.x;
+                });
+    LidarPoint prevMedianPt = largePrevCluster->at((int)largePrevCluster->size()/2);
+    std::sort(largeCurrCluster->begin(),
+                largeCurrCluster->end(),
+                [](const LidarPoint& lhs,
+                const LidarPoint& rhs)
+                {
+                return lhs.x < rhs.x;
+                });
+    LidarPoint currMedianPt = largeCurrCluster->at((int)largeCurrCluster->size()/2);
+
+    // Compute TTC (speed computed with median points, distance with closest point)
+
+    TTC = currClosePt->x /(frameRate*(prevMedianPt.x - currMedianPt.x));
+
 }
 
 
