@@ -194,6 +194,13 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
     // compute distance ratios between all matched keypoints (between each keypoint and the N-1 others)
     vector<double> distRatios;
 
+    // only continue if keypoints matches are not empty
+    if (kptMatches.size() == 0)
+    {
+        TTC = NAN;
+        return;
+    }
+
     for (auto it1 = kptMatches.begin(); it1 != kptMatches.end() - 1; ++it1)
     { // outer keypoint loop
 
@@ -230,7 +237,6 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
         TTC = NAN;
         return;
     }
-
 
     // Compute median distance ratios
     std::sort(distRatios.begin(), distRatios.end());
@@ -355,59 +361,3 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
 
     } // eof loop over all previous box IDs
 }
-
-// void matchBoundingBoxesOld(std::vector<cv::DMatch> &matches, std::map<int, int> &bbBestMatches, DataFrame &prevFrame, DataFrame &currFrame)
-// {
-//     std::map<std::pair<int, int>, int> bbNrMatches; // map containing as key pairs of bounding box IDs and as value number of keypoint matches
-//     for (auto match : matches)
-//     {
-//         // Find keypoints from match in previous and current frame
-//         cv::KeyPoint prevKp = prevFrame.keypoints.at(match.queryIdx);
-//         cv::KeyPoint currKp = currFrame.keypoints.at(match.trainIdx);
-
-//         vector<int> prevIds, currIds; // IDs of boxes containing keypoints in prev and current image
-
-//         // Collect box IDs containing previous keypoint
-//         for (auto it = prevFrame.boundingBoxes.begin(); it != prevFrame.boundingBoxes.end(); it++)
-//         {
-//             if (it->roi.contains(prevKp.pt)
-//                 prevIds.push_back(it->boxID);
-//         }
-
-//         // Collect box IDs containing current keypoint
-//         for (auto it = currFrame.boundingBoxes.begin(); it != currFrame.boundingBoxes.end(); it++)
-//         {
-//             if (it->roi.contains(currKp.pt)
-//                 currIds.push_back(it->boxID);
-//         }
-
-//         // If at least a box was found on each frame, add all box pairs to bbMatches
-//         if (!(prevIds.empty()) && !(currIds.empty()) 
-//         {
-//             for (auto prevId : prevIds)
-//             {
-//                 for (auto currId : currIds)
-//                 {
-//                     std::pair<int, int> bbMatch = make_pair(prevId, currId);
-//                     // Find if bbMatch is present in map
-//                     auto map_it = bbNrMatches.find(bbMatch);
-//                     // if iterator is the end of the map, bbMatch was not found --> initialize at 1
-//                     if (map_it == bbNrMatches.end())
-//                         bbNrMatches[bbMatch] = 1;
-//                     // otherwise, increment by 1
-//                     else
-//                         bbNrMatches[bbMatch] = map_it->second + 1;
-//                 }
-//             }
-//         }
-
-//     } // eof loop over all keypoint matches
-    
-//     // For all boxIDs on previous image
-//     for (auto prevId : prevFrame.boundingBoxes.boxID)
-//     {
-//         std::pair<int, int> b = make_pair(-1, -1);
-//         // Alt 1 -> bbMatches pairs vector, count pairs where first element is boxID and pick the one with highest nr of matches
-//         // Alt 2 -> bbNrMatches map pairs -> int, pick pair with first key boxID with highest nr of matches
-//     }
-// }

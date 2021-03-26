@@ -317,7 +317,7 @@ int main(int argc, const char *argv[])
     // Write lidar ttc
     myfile << "Lidar, -, ";
     std::string sensor = "lidar";
-    objects3DTracking("HARRIS", "BRIEF", sensor, myfile);
+    objects3DTracking("SHITOMASI", "BRISK", sensor, myfile);
     myfile << endl;
 
     // Write camera ttc
