@@ -22,8 +22,7 @@
 
 using namespace std;
 
-/* MAIN PROGRAM */
-int main(int argc, const char *argv[])
+void objects3DTracking(std::string detectorType, std::string descriptorType, std::string sensor, std::ofstream & myfile)
 {
     /* INIT VARIABLES AND DATA STRUCTURES */
 
@@ -129,7 +128,7 @@ int main(int argc, const char *argv[])
         clusterLidarWithROI((dataBuffer.end()-1)->boundingBoxes, (dataBuffer.end() - 1)->lidarPoints, shrinkFactor, P_rect_00, R_rect_00, RT);
 
         // Visualize 3D objects
-        bVis = true;
+        bVis = false;
         if(bVis)
         {
             show3DObjects((dataBuffer.end()-1)->boundingBoxes, cv::Size(4.0, 20.0), cv::Size(2000, 2000), true);
@@ -150,7 +149,7 @@ int main(int argc, const char *argv[])
 
         // extract 2D keypoints from current image
         vector<cv::KeyPoint> keypoints; // create empty feature list for current image
-        string detectorType = "SHITOMASI";
+        // string detectorType = "SHITOMASI";
 
         if (detectorType.compare("SHITOMASI") == 0)
         {
@@ -188,12 +187,11 @@ int main(int argc, const char *argv[])
         /* EXTRACT KEYPOINT DESCRIPTORS */
 
         cv::Mat descriptors;
-        string descriptorType = "BRISK"; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
+        // string descriptorType = "BRISK"; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
         descKeypoints((dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->cameraImg, descriptors, descriptorType);
 
         // push descriptors for current frame to end of data buffer
         (dataBuffer.end() - 1)->descriptors = descriptors;
-
         cout << "#6 : EXTRACT DESCRIPTORS done" << endl;
 
 
@@ -201,15 +199,15 @@ int main(int argc, const char *argv[])
         {
 
             /* MATCH KEYPOINT DESCRIPTORS */
-
             vector<cv::DMatch> matches;
             string matcherType = "MAT_BF";        // MAT_BF, MAT_FLANN
-            string descriptorType = "DES_BINARY"; // DES_BINARY, DES_HOG
+            // Only SIFT is a HOG descriptor, the other are binary
+            string descriptorFamily = descriptorType.compare("SIFT") == 0 ? "DES_HOG": "DES_BINARY"; // DES_BINARY, DES_HOG
             string selectorType = "SEL_NN";       // SEL_NN, SEL_KNN
 
             matchDescriptors((dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints,
                              (dataBuffer.end() - 2)->descriptors, (dataBuffer.end() - 1)->descriptors,
-                             matches, descriptorType, matcherType, selectorType);
+                             matches, descriptorFamily, matcherType, selectorType);
 
             // store matches in current data frame
             (dataBuffer.end() - 1)->kptMatches = matches;
@@ -262,7 +260,7 @@ int main(int argc, const char *argv[])
                     double ttcLidar; 
                     computeTTCLidar(prevBB->lidarPoints, currBB->lidarPoints, sensorFrameRate, ttcLidar);
                     //// EOF STUDENT ASSIGNMENT
-
+                    
                     //// STUDENT ASSIGNMENT
                     //// TASK FP.3 -> assign enclosed keypoint matches to bounding box (implement -> clusterKptMatchesWithROI)
                     //// TASK FP.4 -> compute time-to-collision based on camera (implement -> computeTTCCamera)
@@ -270,8 +268,13 @@ int main(int argc, const char *argv[])
                     clusterKptMatchesWithROI(*currBB, (dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->kptMatches);
                     computeTTCCamera((dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints, currBB->kptMatches, sensorFrameRate, ttcCamera);
                     //// EOF STUDENT ASSIGNMENT
+                    // Print appropriate TTC
+                    if (sensor.compare("lidar") == 0)
+                        myfile << ttcLidar << ", ";
+                    else if (sensor.compare("camera") == 0)
+                        myfile << ttcCamera << ", ";
 
-                    bVis = true;
+                    bVis = false;
                     if (bVis)
                     {
                         cv::Mat visImg = (dataBuffer.end() - 1)->cameraImg.clone();
@@ -296,6 +299,53 @@ int main(int argc, const char *argv[])
         }
 
     } // eof loop over all images
+}
 
+/* MAIN PROGRAM */
+int main(int argc, const char *argv[])
+{
+    // string detectorType = "SHITOMASI"; // SHITOMASI, HARRIS, FAST, BRISK, ORB, AKAZE, SIFT
+    // string descriptorType = "BRISK"; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
+
+    vector<string> detectorTypes{"SHITOMASI", "HARRIS", "FAST", "BRISK", "ORB", "AKAZE", "SIFT"};
+    vector<string> descriptorTypes{"BRISK", "BRIEF", "ORB", "FREAK", "AKAZE", "SIFT"};
+
+    // output file
+    ofstream myfile;
+    myfile.open("../output/ttc.csv");
+    myfile << "Print lidar and camera based TTC" << endl;
+    // Write lidar ttc
+    myfile << "Lidar, -, ";
+    std::string sensor = "lidar";
+    objects3DTracking("HARRIS", "BRIEF", sensor, myfile);
+    myfile << endl;
+
+    // Write camera ttc
+    for (string detectorType : detectorTypes)
+    {
+        for (string descriptorType : descriptorTypes)
+        {
+            cout << detectorType << ", " << descriptorType << std::endl;
+            myfile << detectorType << ", " << descriptorType << ", ";
+            
+            // AKAZE descriptor only works with AKAZE keypoints, skip other cases
+            if ((descriptorType.compare("AKAZE") == 0) && !(detectorType.compare("AKAZE") == 0))
+            {   
+                myfile <<  " Assertion failed" << endl;
+                continue;
+            }
+
+            // ORB descriptor with SIFT detector leads to memory leak
+            if ((descriptorType.compare("ORB") == 0) && (detectorType.compare("SIFT") == 0))
+            {
+                myfile <<  " Insufficient memory" << endl;
+                continue;
+            }
+            sensor = "camera";
+            objects3DTracking(detectorType, descriptorType, sensor, myfile);
+            myfile << endl;
+        }
+    }
+    myfile.close();
     return 0;
 }
