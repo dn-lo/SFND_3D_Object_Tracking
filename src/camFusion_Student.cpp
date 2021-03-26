@@ -169,7 +169,7 @@ void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint
     }
 
     // Compute median and inter-quartile range of distances
-    std::vector<double> sortDistances;
+    std::vector<double> sortDistances(kptDistances.size()); // initialize sorted vector to size
     std::copy(kptDistances.begin(), kptDistances.end(), sortDistances.begin());
     std::sort(sortDistances.begin(), sortDistances.end());
     double medianDist = sortDistances.at((int)(sortDistances.size()/2));
