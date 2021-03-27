@@ -128,7 +128,7 @@ void objects3DTracking(std::string detectorType, std::string descriptorType, std
         clusterLidarWithROI((dataBuffer.end()-1)->boundingBoxes, (dataBuffer.end() - 1)->lidarPoints, shrinkFactor, P_rect_00, R_rect_00, RT);
 
         // Visualize 3D objects
-        bVis = false;
+        bVis = true;
         if(bVis)
         {
             show3DObjects((dataBuffer.end()-1)->boundingBoxes, cv::Size(4.0, 20.0), cv::Size(2000, 2000), true);
@@ -274,7 +274,7 @@ void objects3DTracking(std::string detectorType, std::string descriptorType, std
                     else if (sensor.compare("camera") == 0)
                         myfile << ttcCamera << ", ";
 
-                    bVis = false;
+                    bVis = true;
                     if (bVis)
                     {
                         cv::Mat visImg = (dataBuffer.end() - 1)->cameraImg.clone();
