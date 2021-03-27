@@ -296,7 +296,7 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
                                        return lhs.x < rhs.x;
                                      });
 
-    // Pick median points (along x) in previous current cluster --> more robust for speed computation
+    // Pick median points (along x) in previous and current cluster --> more robust for speed computation
     std::sort(largePrevCluster->begin(),
                 largePrevCluster->end(),
                 [](const LidarPoint& lhs,
@@ -328,7 +328,7 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
     {   
         // Best box ID on current frame and best nr of matches
         int bestCurrId, bestMatches{0};
-        // For all boxIDs on current image
+        // For all boxes on current image
         for (auto currBox: currFrame.boundingBoxes)
         {
             int nrMatches{0};
